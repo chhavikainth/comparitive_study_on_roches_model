@@ -1,0 +1,140 @@
+rm(list=ls())
+load("E:\\SP500_2000to2015.Rdata")
+library(quantmod)
+D.ad <- D.ad[,-66] #- remove Stock "BMC"
+ls()
+Tkr=1 #- Choose the 1st column
+plot(D.ad[,Tkr], main="Stock Prices from Jan. 2000 to Dec. 2015", ylab="Stock Value")
+plot(log(D.ad[,Tkr]), main="Log of Stock Prices", ylab="Log Value")
+plot(diff(log(D.ad[,Tkr])), main= "Daily Log Returns From 2000-2015")
+#Calculating log returns of different stocks
+log_returns <- diff(log(D.ad),lag=1)
+dim(log_returns)
+log_returns[3500:3600, 1]
+log_returns[3520:3530, 1]
+log_returns[3522, 1] #- So row number 3522 = 2014-01-02
+#- 1. try to find what row number is 2015-12-31
+log_returns[3925:4025, 1]
+log_returns[4025, 1] # Row number 4025 = 2015-12-31
+#- Find col number for stock = FB
+which(colnames(D.ad)=="FB")
+plot(log_returns[3522:3822, "FB"], main="FB Log Returns from Jan 2014 to Mar 2015")
+#- Plot log-return for FB
+plot(log_returns[3522:3822, 480], main="FB Log Returns from Jan 2014 to Mar 2015") #- This
+will do the same
+plot(log(D.ad[3522:3822, 480]), main="FB Log Price from Jan 2014 to Mar 2015") #- Plot logprice for FB
+plot(log(D.ad[3522:3822, 480])-log(as.numeric(D.ad[3522, 480]))+1, main="FB Log Price from
+Jan 2014 to Mar 2015, Starting at 1" ) #- Same plot, starting at 1
+#------------------------------------------------------------------------------
+#Produce quarterly histogram
+Y = matrix(0, 240, 1)
+for(i in 1:480) {
+ X = log(D.ad[3522:3761, i])
+ X0 = log(as.numeric(D.ad[3522, i]))
+ if (sum(is.na(X))==0 & min(X) > 3) #- plot only stock that has no NA, and price above 3
+ {
+ Y = cbind(Y,X-X0)
+15
+ #- plot only stock that has no NA, and price above 3
+ plot(X-X0,ylim=c(-.7,.7), main="Log Returns of All stocks from Jan 2014 to Dec 2014",
+ylab="Log Return")
+ }
+ par(new=T)
+}
+Y = Y[,-1] #- remove the first column of zeros
+dim(Y)
+M = xts(rowMeans(Y), order.by=index(Y[,1]))
+lines(M, lwd=5, col="white")
+lines(M, lwd=2, lty=2)
+#-- Plotting Average Log Return over 2014 year --------------
+dev.new()
+plot(M, main="Average Log Return")
+#-- Determining Log Return Standard Deviation --------------
+S = xts(apply(Y,1,sd), order.by=index(Y[,1]))
+dev.new()
+plot(S, main="SD of Log Returns")
+t=1:240
+16
+## S[240] = 0.1847 - standard deviation at end of 240 days
+lines(xts(.1847/sqrt(240)*sqrt(t), order.by=index(Y)), main="SD of Log Returns", col="red")
+plot(Y[,12], main="Log Return Over 2014 year") #- each column is just a log-return of each
+stock
+plot(Y[,13], main="Log Return Over 2014 year") #- each column is just a log-return of each
+stock
+plot(Y[,14], main="Log Return Over 2014 year") #- each column is just a log-return of each
+stock
+#-- Plotting Log Return Histograms over different intervals------------
+par(mfrow = c(3,2))
+#hist(as.numeric(Y[1,]), xlim = c(-0.6,0.6), main="Jan 2014 (1Day)", xlab="Log Return")
+hist(as.numeric(Y[60,]), xlim = c(-0.6,0.6), main="Mar 2014 (60 Days)", xlab="Log Return")
+hist(as.numeric(Y[120,]), xlim = c(-0.6,0.6), main="May 2014 (120 Days)", xlab="Log Return")
+hist(as.numeric(Y[180,]), xlim = c(-0.6,0.6), main="July 2014 (180 Days)", xlab="Log Return")
+hist(as.numeric(Y[240,]), xlim = c(-0.6,0.6), main="Sep 2014 (240 Days)", xlab="Log Return")
+par(mfrow=c(1,1))
+17
+#-- Calculating Call Price Over 2014 Year ---------------------------------
+Call.price=0
+for (day in 1:240) {
+ #M[day] = mean(as.numeric(Y[day,]))
+ Call.price[day] = mean((as.numeric(Y[day,])>0)*as.numeric(Y[day,]))
+ plot(Call.price, main="Call Price of Total Stocks over Time Period: Jan 2014 - Dec 2014")
+}
+Call.price=xts(Call.price, order.by=index(Y))
+dev.new()
+plot(Call.price, type="l", main="Mean Call Value from Actual Data")
+mean(Call.price)
+[1] 0.07629075
+#-- Calculating Black-Scholes option values -----------------------------------
+BS <- function(S,K,r,si,T,del) {
+ d1=(log(S/K) + (r-del+si^2/2)*T )/ (si*sqrt(T))
+ d2=(log(S/K) + (r-del-si^2/2)*T )/ (si*sqrt(T))
+ pnorm(d1)
+ pnorm(d2)
+ Call = S*exp(-del*T)*pnorm(d1) - K*exp(-r*T)*pnorm(d2)
+ return(Call)
+}
+18
+S = 100
+K1 = 90
+K2 = 95
+K3 = 100
+K4 = 105
+K5 = 110
+r = .03
+si = .1847
+T = (1:240)/240
+del= .00
+#######Calculating Black-Scholes values based on different strike prices#######
+C1 <- BS(S,K1,r,si,T,del)
+BS.c1 <- xts(log(S+C1)-log(S), order.by=index(Y))
+mean(C1)
+C2 <- BS(S,K2,r,si,T,del)
+BS.c2 <- xts(log(S+C2)-log(S), order.by=index(Y))
+mean(C2)
+C3 <- BS(S,K3,r,si,T,del)
+BS.c3 <- xts(log(S+C3)-log(S), order.by=index(Y))
+mean(C3)
+19
+C4 <- BS(S,K4,r,si,T,del)
+BS.c4 <- xts(log(S+C4)-log(S), order.by=index(Y))
+mean(C4)
+C5 <- BS(S,K5,r,si,T,del)
+BS.c5 <- xts(log(S+C5)-log(S), order.by=index(Y))
+mean(C5)
+############Comparing B-S to Actual Call Option############
+dev.new()
+plot(Call.price, type="l", main="Call Value Actual vs B-S")
+Kcall = 100
+si=.27
+Call <- BS(S,Kcall,r,si,T,del)
+BS.call <- xts(log(S+Call)-log(S), order.by=index(Y))
+lines(BS.call, lwd=1)
+Call2 <- BS(S,Kcall,.1,.1845,T,del)
+BS.call2 <- xts(log(S+Call2)-log(S), order.by=index(Y))
+lines(BS.call2, lwd=1, lty=2)
+20
+##-- Black-Scholes Plot with Strike Price of K = 100----##
+r1 = 0.03
+si1 = 0.1847
+CallBS <- BS(S,Kcall,r,si1,T,del)
+plot(CallBS,main="Call Value by B-S formua", xlab="Days")
